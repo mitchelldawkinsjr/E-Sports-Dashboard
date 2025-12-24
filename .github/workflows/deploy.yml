@@ -1,0 +1,150 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Setup repository on VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+            set -e
+            DEPLOY_DIR="/opt/esports-dashboard"
+            
+            # Create directory if it doesn't exist
+            sudo mkdir -p "$DEPLOY_DIR"
+            sudo chown -R $USER:$USER "$DEPLOY_DIR"
+            
+            # Clone or pull repository
+            if [ -d "$DEPLOY_DIR/.git" ]; then
+              echo "Repository exists, pulling latest changes..."
+              cd "$DEPLOY_DIR"
+              git fetch origin
+              git reset --hard origin/main
+              git clean -fd
+            else
+              echo "Cloning repository..."
+              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
+              cd "$DEPLOY_DIR"
+              git checkout main
+            fi
+          ENDSSH
+
+      - name: Create .env file on VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+            set -e
+            DEPLOY_DIR="/opt/esports-dashboard"
+            cd "$DEPLOY_DIR"
+            
+            # Create .env file from GitHub secrets
+            cat > .env << EOF
+            # Database Configuration
+            DB_DATABASE=${{ secrets.DB_DATABASE || 'esports' }}
+            DB_USERNAME=${{ secrets.DB_USERNAME || 'esports' }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            
+            # Application URLs
+            APP_URL=${{ secrets.APP_URL }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            
+            # Sanctum Configuration
+            SANCTUM_STATEFUL_DOMAINS=${{ secrets.SANCTUM_STATEFUL_DOMAINS }}
+            
+            # CORS Configuration
+            CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
+            
+            # Application Settings
+            APP_ENV=production
+            APP_DEBUG=false
+            
+            # Redis Configuration (Internal)
+            REDIS_HOST=redis
+            REDIS_PORT=6379
+            REDIS_CLIENT=predis
+            
+            # Session & Cache
+            SESSION_DRIVER=redis
+            CACHE_DRIVER=redis
+            QUEUE_CONNECTION=redis
+            EOF
+            
+            echo ".env file created successfully"
+          ENDSSH
+
+      - name: Deploy with Docker Compose
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+            set -e
+            DEPLOY_DIR="/opt/esports-dashboard"
+            cd "$DEPLOY_DIR"
+            
+            echo "Building and starting containers..."
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            
+            echo "Waiting for containers to be healthy..."
+            sleep 10
+            
+            echo "Container status:"
+            docker compose -f docker-compose.prod.yml ps
+          ENDSSH
+
+      - name: Health Check
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+            set -e
+            DEPLOY_DIR="/opt/esports-dashboard"
+            cd "$DEPLOY_DIR"
+            
+            # Check if all containers are running
+            CONTAINERS=$(docker compose -f docker-compose.prod.yml ps -q)
+            if [ -z "$CONTAINERS" ]; then
+              echo "ERROR: No containers found!"
+              exit 1
+            fi
+            
+            # Check each container status
+            for container in $CONTAINERS; do
+              STATUS=$(docker inspect --format='{{.State.Status}}' "$container")
+              HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "no-healthcheck")
+              
+              echo "Container $container: Status=$STATUS, Health=$HEALTH"
+              
+              if [ "$STATUS" != "running" ]; then
+                echo "ERROR: Container $container is not running!"
+                docker logs "$container" --tail 50
+                exit 1
+              fi
+            done
+            
+            echo "All containers are running successfully!"
+            
+            # Show container details
+            echo ""
+            echo "Container details:"
+            docker compose -f docker-compose.prod.yml ps
+          ENDSSH
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Deployed by: ${{ github.actor }}"
+
