@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+vendor/
+backend/vendor/
+frontend/node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# Build outputs
+.next/
+dist/
+build/
+backend/bootstrap/cache/*
+backend/storage/*.key
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+backend/storage/logs/*.log
+
+# Database
+*.sqlite
+*.sqlite-journal
+backend/database/*.sqlite
+
+# Docker
+docker-compose.override.yml
+
