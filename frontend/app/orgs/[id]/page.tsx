@@ -115,8 +115,8 @@ export default function OrganizationDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {teams?.data?.data?.length > 0 ? (
-                teams.data.data.map((team: any) => (
+              {teams?.data?.data?.length ? (
+                (teams.data.data ?? []).map((team: any) => (
                   <Link key={team.id} href={`/teams/${team.id}`}>
                     <Card className="hover:border-primary transition-colors">
                       <CardContent className="p-3">
