@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/lib/api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,6 +20,14 @@ function formatTimeAgo(date: string) {
   return then.toLocaleDateString();
 }
 
+type Notification = {
+  id: number;
+  title: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+};
+
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
 
@@ -29,10 +37,14 @@ export default function NotificationsPage() {
   });
 
   const markAsRead = useMutation({
-    mutationFn: async (notificationId: number) => {
-      // TODO: Add mark as read endpoint
-      return Promise.resolve();
+    mutationFn: async (notificationId: number) => notificationsApi.markRead(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
+  });
+
+  const markAllAsRead = useMutation({
+    mutationFn: async () => notificationsApi.markAllRead(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
@@ -75,7 +87,12 @@ export default function NotificationsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Notifications</h1>
         {notifications.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => {}}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => markAllAsRead.mutate()}
+            disabled={markAllAsRead.isPending}
+          >
             Mark all as read
           </Button>
         )}
@@ -83,7 +100,7 @@ export default function NotificationsPage() {
 
       {notifications.length > 0 ? (
         <div className="space-y-4">
-          {notifications.map((notification: any) => (
+          {notifications.map((notification: Notification) => (
             <Card
               key={notification.id}
               className={`border-l-4 ${
@@ -113,6 +130,7 @@ export default function NotificationsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => markAsRead.mutate(notification.id)}
+                      disabled={markAsRead.isPending}
                     >
                       Mark read
                     </Button>

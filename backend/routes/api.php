@@ -53,6 +53,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/orgs/{orgId}/announcements', [\App\Http\Controllers\AnnouncementController::class, 'store']);
         Route::get('/orgs/{orgId}/announcements', [\App\Http\Controllers\AnnouncementController::class, 'index']);
         Route::get('/me/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+        Route::post('/me/notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+        Route::post('/me/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
         Route::get('/me', [\App\Http\Controllers\UserController::class, 'me']);
     });
 });

@@ -149,5 +149,7 @@ export const announcementsApi = {
 // Notifications API
 export const notificationsApi = {
   list: () => api.get('/me/notifications'),
+  markRead: (id: number) => api.post(`/me/notifications/${id}/read`),
+  markAllRead: () => api.post('/me/notifications/read-all'),
 };
 
