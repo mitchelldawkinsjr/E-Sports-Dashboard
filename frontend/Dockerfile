@@ -9,7 +9,7 @@ RUN npm ci
 # Copy application files
 COPY . .
 
-# Create .env.local if it doesn't exist (default to 8080 to match compose)
+# Create .env.local if it doesn't exist (default to 8080 to match compose/api)
 RUN if [ ! -f .env.local ]; then \
     echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}" > .env.local; \
     fi
