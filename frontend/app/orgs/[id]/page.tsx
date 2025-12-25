@@ -82,8 +82,8 @@ export default function OrganizationDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {seasons?.data?.data?.length > 0 ? (
-                seasons.data.data.map((season: any) => (
+              {seasons?.data?.data?.length ? (
+                (seasons.data.data ?? []).map((season: any) => (
                   <Link
                     key={season.id}
                     href={`/seasons/${season.id}`}
