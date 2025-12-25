@@ -107,7 +107,10 @@ export default function StandingsPage() {
               <div>
                 <CardTitle>Standings</CardTitle>
                 <CardDescription>
-                  Last updated: {data.data.computed_at ? new Date(data.data.computed_at).toLocaleString() : 'N/A'}
+                  Last updated:{' '}
+                  {data?.data?.computed_at
+                    ? new Date(data.data.computed_at).toLocaleString()
+                    : 'N/A'}
                 </CardDescription>
               </div>
             </div>
